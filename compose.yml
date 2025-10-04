@@ -1,0 +1,81 @@
+services:
+  webserver:
+    image: caddy:2.9.1-alpine
+    container_name: task-master-webserver
+    ports:
+      - "${WEBSERVER_OUTER_PORT:-1020}:80"
+    volumes:
+      - ./docker-resources/webserver/Caddyfile:/etc/caddy/Caddyfile
+      # - ./docker-resources/webserver/data:/data
+      - ./backend:/var/www/html
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+  app:
+    image: task-master-app
+    build:
+      context: ./docker-resources/php-8
+      target: fpm-runner
+    container_name: task-master-app
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker-resources/php-8/conf:/usr/local/etc/php/conf.d
+    depends_on:
+      - db
+
+  scheduler:
+    image: task-master-app
+    build:
+      context: ./docker-resources/php-8
+      target: build
+    container_name: task-master-scheduler
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker-resources/php-8/conf:/usr/local/etc/php/conf.d
+    depends_on:
+      - app
+    
+    restart: unless-stopped
+    entrypoint: php artisan schedule:work
+
+  queue:
+    image: task-master-app
+    build: 
+      context: ./docker-resources/php-8
+      target: build
+    container_name: task-master-queue
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker-resources/php-8/conf:/usr/local/etc/php/conf.d
+    depends_on:
+      - app
+    restart: unless-stopped
+    entrypoint: php artisan queue:work --sleep=3 --tries=3
+
+
+  db:
+    image: mysql:8.0
+    container_name: task-master-db
+    ports:
+      - "${MYSQL_OUTER_PORT}:3306"
+    environment:
+      MYSQL_USER: ${DB_USERNAME:?You need to set database User}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?You need to set database Password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?You need to set database Root Password}
+      MYSQL_DATABASE: ${DB_DATABASE:?You need to set database name}
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./docker-resources/db/home:/home
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: task-master-phpmyadmin
+    ports:
+      - "${PHPMYADMIN_OUTER_PORT:-9136}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 1G
+    depends_on:
+      - db
+
+volumes:
+  db-data:
