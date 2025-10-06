@@ -2,7 +2,7 @@
  
 namespace App\Enums;
 
-enum NotificationStatusEnum: string {
+enum NotificationUsersStatusEnum: string {
     case PENDING = "pending";
 
     case PROCESSING = "processing";
@@ -11,5 +11,5 @@ enum NotificationStatusEnum: string {
 
     case FAILED = "failed";
 
-    case PARTIAL = "partial";
+
 }

@@ -16,7 +16,10 @@ return new class extends Migration
             $table->foreignid('notification_id')->constrained();
             $table->foreignid('user_id')->constrained();
             $table->string('channel');
-            $table->enum('status', ['pending', 'completed', 'failed'])->default('pending');
+            $table->dateTime('expire_at')->nullable(); // this filled every time the notification goes to processing status
+            $table->integer('attempt')->default(0);
+            $table->string('error_message')->nullable();
+            $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
             $table->timestamps();
         });
     }
